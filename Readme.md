@@ -122,7 +122,6 @@ Monitor:
 PowerPilot-AI/
 │
 ├── index.html
-├── assets/
 ├── README.md
 ```
 
@@ -183,14 +182,10 @@ The dashboard provides:
 
 ## 👨‍💻 Developed For
 
-**IBM Hackathon**
-
-**Problem Statement 17**
-
 **AI-Based Smart Load Balancing Agent for Buildings**
 
 ---
 
 ## 📄 License
 
-This project is developed for educational and hackathon purposes.
+This project is developed for educational purposes.
