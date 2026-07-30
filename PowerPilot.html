@@ -1,0 +1,1972 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PowerPilot AI — Building Energy Management Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* CSS variable architecture for Light & Dark Mode */
+    :root {
+      --bg: #f8fafc;
+      --bg-gradient: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+      --surface: #ffffff;
+      --surface-hover: #f1f5f9;
+      --surface-muted: #f8fafc;
+      --border: rgba(15, 23, 42, 0.08);
+      --border-strong: rgba(15, 23, 42, 0.14);
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --text-inverse: #ffffff;
+      
+      --blue: #2563eb;
+      --blue-glow: rgba(37, 99, 235, 0.08);
+      --green: #10b981;
+      --green-glow: rgba(16, 185, 129, 0.08);
+      --orange: #d97706;
+      --orange-glow: rgba(217, 119, 6, 0.08);
+      --red: #dc2626;
+      --red-glow: rgba(220, 38, 38, 0.08);
+      
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+      --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.06), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      
+      --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --grid-dot: rgba(15, 23, 42, 0.03);
+      --header-bg: rgba(255, 255, 255, 0.8);
+      --card-bg: #ffffff;
+      --hero-bg: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      --chat-user-bg: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      --chat-assistant-bg: #f1f5f9;
+      --console-border: rgba(15, 23, 42, 0.1);
+      --console-bg: #090d16;
+    }
+
+    [data-theme="dark"] {
+      --bg: #07090e;
+      --bg-gradient: linear-gradient(180deg, #07090e 0%, #0c0e14 100%);
+      --surface: #11151e;
+      --surface-hover: #19202e;
+      --surface-muted: #0d1017;
+      --border: rgba(255, 255, 255, 0.06);
+      --border-strong: rgba(255, 255, 255, 0.12);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-inverse: #0f172a;
+      
+      --blue: #3b82f6;
+      --blue-glow: rgba(59, 130, 246, 0.12);
+      --green: #10b981;
+      --green-glow: rgba(16, 185, 129, 0.12);
+      --orange: #f59e0b;
+      --orange-glow: rgba(245, 158, 11, 0.12);
+      --red: #ef4444;
+      --red-glow: rgba(239, 68, 68, 0.12);
+      
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+      --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+      --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+      
+      --grid-dot: rgba(255, 255, 255, 0.015);
+      --header-bg: rgba(17, 21, 30, 0.85);
+      --card-bg: rgba(17, 21, 30, 0.7);
+      --hero-bg: linear-gradient(135deg, rgba(20, 31, 55, 0.9) 0%, rgba(14, 20, 35, 0.95) 100%);
+      --chat-user-bg: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      --chat-assistant-bg: rgba(255, 255, 255, 0.04);
+      --console-border: rgba(255, 255, 255, 0.08);
+      --console-bg: #11151e;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--text);
+      background: var(--bg-gradient);
+      overflow-x: hidden;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.8;
+      background-image: radial-gradient(var(--grid-dot) 1px, transparent 1px);
+      background-size: 24px 24px;
+      mask-image: radial-gradient(circle at 50% 50%, white, transparent);
+      z-index: 0;
+    }
+
+    /* Transition targets for theme switcher */
+    body, header, .panel, .kpi, .chat-card, .status-card, .action-card, .bubble, .summary-block, .summary-metric, .button, .prompt-chip, .legend-item, .footer {
+      transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease, box-shadow 0.3s ease;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { transform: scale(0.96); box-shadow: 0 0 0 0 var(--green); }
+      70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+    }
+
+    @keyframes pulseWarning {
+      0%, 100% { transform: scale(0.96); box-shadow: 0 0 0 0 var(--orange); }
+      70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    @keyframes typing {
+      0%, 100% { opacity: 0.2; transform: translateY(0); }
+      50% { opacity: 1; transform: translateY(-2px); }
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .shell {
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      overflow: hidden;
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      box-shadow: var(--shadow-xl);
+    }
+
+    /* HEADER */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 20px 28px;
+      border-bottom: 1px solid var(--border);
+      background: var(--header-bg);
+      backdrop-filter: blur(12px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--blue), #60a5fa);
+      color: white;
+      box-shadow: 0 8px 16px rgba(37, 99, 235, 0.2);
+    }
+
+    .brand-mark svg {
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
+    }
+
+    .brand-copy h1 {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--text);
+    }
+
+    .brand-copy p {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: var(--surface-hover);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .header-pill.connected {
+      color: #065f46;
+      background: #ecfdf5;
+      border-color: #d1fae5;
+    }
+
+    [data-theme="dark"] .header-pill.connected {
+      color: #a7f3d0;
+      background: rgba(16, 185, 129, 0.1);
+      border-color: rgba(16, 185, 129, 0.2);
+    }
+
+    .header-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulseDot 2.4s infinite;
+    }
+
+    /* Theme Toggle Switch */
+    .theme-toggle {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s ease;
+    }
+
+    .theme-toggle:hover {
+      background: var(--surface-hover);
+      border-color: var(--border-strong);
+      transform: translateY(-1px);
+    }
+
+    .theme-toggle svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .theme-toggle .sun-icon {
+      display: none;
+    }
+
+    .theme-toggle .moon-icon {
+      display: block;
+    }
+
+    [data-theme="light"] .theme-toggle .sun-icon {
+      display: block;
+    }
+
+    [data-theme="light"] .theme-toggle .moon-icon {
+      display: none;
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--blue), #4f46e5);
+      color: white;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: -0.01em;
+      box-shadow: 0 4px 10px rgba(37, 99, 235, 0.15);
+    }
+
+    /* KPIs */
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .kpi {
+      position: relative;
+      padding: 24px;
+      background: var(--surface);
+      overflow: hidden;
+      animation: fadeUp 600ms ease both;
+    }
+
+    .kpi:nth-child(2) { animation-delay: 50ms; }
+    .kpi:nth-child(3) { animation-delay: 100ms; }
+    .kpi:nth-child(4) { animation-delay: 150ms; }
+    .kpi:nth-child(5) { animation-delay: 200ms; }
+
+    .kpi-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 16px;
+    }
+
+    .kpi-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: var(--blue-glow);
+      color: var(--blue);
+      flex-shrink: 0;
+    }
+
+    .kpi:nth-child(2) .kpi-icon { background: var(--orange-glow); color: var(--orange); }
+    .kpi:nth-child(3) .kpi-icon { background: var(--green-glow); color: var(--green); }
+    .kpi:nth-child(4) .kpi-icon { background: var(--green-glow); color: var(--green); }
+    .kpi:nth-child(5) .kpi-icon { background: var(--blue-glow); color: var(--blue); }
+
+    .kpi-value {
+      font-size: 32px;
+      line-height: 1.1;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .kpi-value.accent-blue { color: var(--blue); }
+    .kpi-value.accent-orange { color: var(--orange); }
+    .kpi-value.accent-green { color: var(--green); }
+    .kpi-value.accent-red { color: var(--red); }
+
+    .kpi-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .kpi-meta strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    /* HERO SECTION */
+    .hero {
+      padding: 36px 28px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-muted);
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 36px;
+      align-items: center;
+    }
+
+    .hero-copy {
+      animation: fadeUp 700ms ease both;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--surface);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .eyebrow span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--blue);
+      box-shadow: 0 0 0 4px var(--blue-glow);
+    }
+
+    .hero-copy h2 {
+      font-size: clamp(28px, 3.5vw, 42px);
+      letter-spacing: -0.05em;
+      line-height: 1.1;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+
+    .hero-copy p {
+      color: var(--text-muted);
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 28px;
+      max-width: 56ch;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .button {
+      appearance: none;
+      outline: none;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 20px;
+      color: var(--text);
+      background: var(--surface);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .button.primary {
+      background: var(--blue);
+      color: var(--text-inverse);
+      border-color: transparent;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.2);
+    }
+
+    .button:hover {
+      border-color: var(--border-strong);
+      box-shadow: var(--shadow);
+      transform: translateY(-1.5px);
+    }
+
+    .button.primary:hover {
+      background: #1d4ed8;
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
+    }
+
+    .button:active {
+      transform: translateY(0);
+    }
+
+    /* Premium Smart Building Console (Hero Right) */
+    .hero-image-wrapper {
+      position: relative;
+      border-radius: 20px;
+      border: 1px solid var(--console-border);
+      background: var(--console-bg);
+      box-shadow: var(--shadow-xl);
+      overflow: hidden;
+      animation: fadeUp 800ms ease both;
+    }
+
+    /* Simulated macOS window header */
+    .console-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      background: rgba(0, 0, 0, 0.15);
+      border-bottom: 1px solid var(--console-border);
+    }
+
+    .console-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .console-dots span {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ef4444;
+    }
+
+    .console-dots span:nth-child(2) { background: #f59e0b; }
+    .console-dots span:nth-child(3) { background: #10b981; }
+
+    .console-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .console-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--green);
+    }
+
+    .console-indicator span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulseDot 2s infinite;
+    }
+
+    .hero-image-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: radial-gradient(circle at center, rgba(59, 130, 246, 0.06), transparent 80%);
+    }
+
+    .hero-image {
+      max-width: 100%;
+      height: auto;
+      border-radius: 12px;
+      display: block;
+      transition: transform 0.5s ease;
+    }
+
+    .hero-image-wrapper:hover .hero-image {
+      transform: scale(1.02);
+    }
+
+    /* THREE COLUMN DASHBOARD LAYOUT */
+    .layout {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr) 320px;
+      gap: 24px;
+      padding: 28px;
+      background: var(--bg);
+    }
+
+    .sidebar, .chat-shell, .status-shell {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      min-width: 0;
+    }
+
+    .panel {
+      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-title h3 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text);
+    }
+
+    .panel-title span {
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .action-list, .alert-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .action-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface-muted);
+      cursor: pointer;
+    }
+
+    .action-card:hover {
+      border-color: var(--blue);
+      background: var(--surface-hover);
+      transform: translateX(2px);
+    }
+
+    .action-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: var(--blue-glow);
+      color: var(--blue);
+      flex-shrink: 0;
+    }
+
+    .action-text strong {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+
+    .action-text span {
+      color: var(--text-muted);
+      font-size: 11px;
+      line-height: 1.3;
+      display: block;
+    }
+
+    /* SYSTEM SUMMARY CARD */
+    .system-summary-card {
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .system-stat {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .system-stat small {
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .system-stat strong {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    /* CHAT ASSISTANT SHELL (CENTER) */
+    .chat-shell {
+      min-height: 750px;
+    }
+
+    .chat-card {
+      min-height: 750px;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: var(--surface);
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+    }
+
+    .chat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-muted);
+    }
+
+    .chat-header h3 {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .chat-header p {
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 500;
+      margin-top: 2px;
+    }
+
+    .typing-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      background: var(--green-glow);
+      color: var(--green);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .typing-dots {
+      display: inline-flex;
+      gap: 3px;
+    }
+
+    .typing-dots span {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: typing 1.1s infinite ease-in-out;
+    }
+
+    .typing-dots span:nth-child(2) { animation-delay: 120ms; }
+    .typing-dots span:nth-child(3) { animation-delay: 240ms; }
+
+    .chat-body {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .bubble {
+      max-width: 85%;
+      border-radius: 16px;
+      padding: 14px 18px;
+      border: 1px solid var(--border);
+      line-height: 1.5;
+      font-size: 13px;
+      animation: fadeUp 400ms ease both;
+    }
+
+    .bubble.user {
+      margin-left: auto;
+      background: var(--chat-user-bg);
+      color: var(--text-inverse);
+      border-color: transparent;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+      border-bottom-right-radius: 4px;
+    }
+
+    .bubble.assistant {
+      background: var(--chat-assistant-bg);
+      color: var(--text);
+      border-bottom-left-radius: 4px;
+    }
+
+    .assistant-header {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--blue);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .assistant-summary {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 12px;
+    }
+
+    .summary-block {
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .summary-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: -0.01em;
+      margin-bottom: 10px;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+    }
+
+    .mini-chart {
+      height: 60px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, var(--blue-glow), transparent);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mini-chart::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+      transform: translateX(-100%);
+      animation: shimmer 3s linear infinite;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .summary-metric {
+      padding: 10px;
+      border-radius: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+
+    .summary-metric small {
+      display: block;
+      color: var(--text-muted);
+      font-size: 10px;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .summary-metric strong {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* CHAT TABLE */
+    .summary-table-container {
+      overflow: hidden;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .summary-table th {
+      background: var(--surface-muted);
+      color: var(--text-muted);
+      font-weight: 600;
+      text-align: left;
+      padding: 8px 12px;
+    }
+
+    .summary-table td {
+      padding: 8px 12px;
+      border-top: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .summary-table tr:hover {
+      background: var(--surface-muted);
+    }
+
+    .prompt-rail {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .prompt-chip {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s ease;
+    }
+
+    .prompt-chip:hover {
+      border-color: var(--blue);
+      background: var(--surface-hover);
+      transform: translateY(-1px);
+    }
+
+    .chat-mount {
+      margin-top: 16px;
+      min-height: 380px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      background: var(--surface-muted);
+    }
+
+    #root {
+      width: 100%;
+      min-height: 380px;
+      height: 100%;
+    }
+
+    #root iframe {
+      width: 100% !important;
+      height: 100% !important;
+      border: 0 !important;
+      background: transparent !important;
+    }
+
+    /* RIGHT SIDEBAR */
+    .status-shell {
+      gap: 24px;
+    }
+
+    .status-card {
+      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .status-card h3 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .status-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface-muted);
+      font-size: 12px;
+    }
+
+    .status-row strong {
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .status-value {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .agents {
+      display: grid;
+      gap: 8px;
+    }
+
+    .agent-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface-muted);
+    }
+
+    .agent-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .agent-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulseDot 2.2s infinite;
+      flex-shrink: 0;
+    }
+
+    .agent-name strong {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .agent-name span {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .agent-status-tag {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--green);
+      background: var(--green-glow);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(16, 185, 129, 0.15);
+    }
+
+    /* CHARTS CONTAINER */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 24px;
+      padding: 0 28px 28px;
+      background: var(--bg);
+    }
+
+    .chart-card, .alert-card {
+      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .chart-card h3, .alert-card h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .chart-card p, .alert-card p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+      font-weight: 500;
+    }
+
+    .chart-card svg {
+      width: 100%;
+      height: auto;
+      overflow: visible;
+      display: block;
+    }
+
+    /* Chart labels styling */
+    .dashboard-chart text {
+      font-family: var(--font-sans);
+      fill: var(--text-muted);
+    }
+
+    .chart-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--surface-muted);
+      border: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    /* ALERT ITEMS (LIST) */
+    .alert-card-item {
+      display: flex;
+      align-items: start;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface-muted);
+    }
+
+    .alert-card-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .alert-card-item.warning .alert-card-icon {
+      background: var(--orange-glow);
+      color: var(--orange);
+      border: 1px solid rgba(217, 119, 6, 0.15);
+    }
+
+    .alert-card-item.danger .alert-card-icon {
+      background: var(--red-glow);
+      color: var(--red);
+      border: 1px solid rgba(220, 38, 38, 0.15);
+    }
+
+    .alert-card-item.success .alert-card-icon {
+      background: var(--green-glow);
+      color: var(--green);
+      border: 1px solid rgba(16, 185, 129, 0.15);
+    }
+
+    .alert-card-item.info .alert-card-icon {
+      background: var(--blue-glow);
+      color: var(--blue);
+      border: 1px solid rgba(37, 99, 235, 0.15);
+    }
+
+    .alert-card-text strong {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+
+    .alert-card-text span {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* FOOTER */
+    .footer {
+      padding: 28px;
+      border-top: 1px solid var(--border);
+      background: var(--surface-muted);
+      color: var(--text-muted);
+      font-size: 12px;
+      text-align: center;
+      font-weight: 500;
+    }
+
+    .footer-badges {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .footer-badge {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-weight: 600;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* RESPONSIVENESS */
+    @media (max-width: 1280px) {
+      .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .hero-grid { grid-template-columns: 1fr; gap: 28px; }
+      .hero-image-wrapper { max-width: 600px; margin: 0 auto; width: 100%; }
+      .layout { grid-template-columns: 1fr; }
+      .chat-shell { min-height: 680px; }
+      .chat-card { min-height: 680px; }
+      .chart-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 768px) {
+      .page { padding: 12px; }
+      .shell { border-radius: 18px; }
+      .header { flex-direction: column; align-items: stretch; padding: 16px 20px; }
+      .header-right { flex-wrap: wrap; justify-content: start; }
+      .kpis { grid-template-columns: 1fr; }
+      .actions { gap: 8px; }
+      .button { width: 100%; justify-content: center; }
+      .summary-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="shell">
+      <!-- HEADER -->
+      <header class="header">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L4 13h6l-1 9 11-13h-7l1-7Z" />
+            </svg>
+          </div>
+          <div class="brand-copy">
+            <h1>PowerPilot AI</h1>
+            <p>Building Energy Management Agent</p>
+          </div>
+        </div>
+        
+        <div class="header-right">
+          <div class="header-pill connected">
+            <span class="header-dot"></span> Agent Connected
+          </div>
+          <div class="header-pill">IBM Granite</div>
+          <div class="header-pill" id="current-time">--:--</div>
+          <div class="header-pill" aria-label="3 alerts pending">
+            <svg style="margin-right: 4px; width: 14px; height: 14px;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            3
+          </div>
+          
+          <!-- Theme Toggle Switch -->
+          <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme mode">
+            <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+            <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </button>
+          
+          <div class="avatar" title="PowerPilot Profile">PP</div>
+        </div>
+      </header>
+
+      <!-- KPI CARDS -->
+      <section class="kpis">
+        <div class="kpi">
+          <div class="kpi-label">
+            <span class="kpi-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
+            </span>
+            Current Building Load
+          </div>
+          <div class="kpi-value accent-blue" data-counter="245">245 kW</div>
+          <div class="kpi-meta">Trend <strong>↑ 4%</strong></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">
+            <span class="kpi-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </span>
+            Peak Risk
+          </div>
+          <div class="kpi-value accent-orange">High</div>
+          <div class="kpi-meta">Prediction in <strong>20 min</strong></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">
+            <span class="kpi-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23"/>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+              </svg>
+            </span>
+            Estimated Savings
+          </div>
+          <div class="kpi-value accent-green" data-counter="142">$142 Today</div>
+          <div class="kpi-meta">Optimized through AI scheduling</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">
+            <span class="kpi-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.58 1 9.8a7 7 0 0 1-9 8.2Z"/>
+                <path d="M9 22v-4h4"/>
+              </svg>
+            </span>
+            Carbon Reduction
+          </div>
+          <div class="kpi-value accent-green" data-counter="18">18 kg CO₂</div>
+          <div class="kpi-meta">Lower than baseline today</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">
+            <span class="kpi-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="2" width="16" height="20" rx="2" ry="2"/>
+                <line x1="9" y1="22" x2="9" y2="16"/>
+                <line x1="15" y1="22" x2="15" y2="16"/>
+                <line x1="9" y1="16" x2="15" y2="16"/>
+                <path d="M8 6h.01"/>
+                <path d="M16 6h.01"/>
+              </svg>
+            </span>
+            Building Efficiency
+          </div>
+          <div class="kpi-value accent-blue" data-counter="92">92%</div>
+          <div class="kpi-meta">Operating at near-optimal range</div>
+        </div>
+      </section>
+
+      <!-- HERO SECTION -->
+      <section class="hero">
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <div class="eyebrow"><span></span> Enterprise AI Control Center</div>
+            <h2>Intelligent Building Energy Optimization</h2>
+            <p>Monitor energy consumption, predict peak demand, detect anomalies, and optimize electrical loads using IBM Granite AI Agents.</p>
+            <div class="actions">
+              <button class="button primary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Analyze Building
+              </button>
+              <button class="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 13h6l-1 9 11-13h-7l1-7Z"/></svg>
+                Predict Peak
+              </button>
+              <button class="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                Optimize Energy
+              </button>
+              <button class="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Generate Report
+              </button>
+            </div>
+          </div>
+
+          <!-- Premium Simulated Dashboard/Digital Twin Monitor -->
+          <div class="hero-image-wrapper">
+            <div class="console-header">
+              <div class="console-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <div class="console-title">Digital Twin Grid Visualization</div>
+              <div class="console-indicator">
+                <span></span> Live
+              </div>
+            </div>
+            <div class="hero-image-container">
+              <img src="assets/smart_building_hero.png" alt="Futuristic Smart Building Grid Visualization" class="hero-image" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- LAYOUT -->
+      <section class="layout">
+        <!-- SIDEBAR (LEFT) -->
+        <aside class="sidebar">
+          <div class="panel">
+            <div class="panel-title">
+              <h3>System Overview</h3>
+              <span>Status</span>
+            </div>
+            <div class="system-summary-card">
+              <div class="system-stat"><small>Facility</small><strong>Commercial Tower</strong></div>
+              <div class="system-stat"><small>Systems Online</small><strong>24 Subsystems</strong></div>
+              <div class="system-stat"><small>Agent Mode</small><strong style="color: var(--blue);">Autonomous Shaving</strong></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">
+              <h3>Quick Actions</h3>
+              <span>Shortcuts</span>
+            </div>
+            <div class="action-list">
+              <div class="action-card">
+                <div class="action-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
+                  </svg>
+                </div>
+                <div class="action-text">
+                  <strong>Analyze Current Load</strong>
+                  <span>Inspect building consumption patterns.</span>
+                </div>
+              </div>
+              <div class="action-card">
+                <div class="action-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M13 2L4 13h6l-1 9 11-13h-7l1-7Z"/>
+                  </svg>
+                </div>
+                <div class="action-text">
+                  <strong>Predict Peak Demand</strong>
+                  <span>Forecast the next load spike.</span>
+                </div>
+              </div>
+              <div class="action-card">
+                <div class="action-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="12"/><line x1="11" y1="14" x2="11.01" y2="14"/>
+                  </svg>
+                </div>
+                <div class="action-text">
+                  <strong>Detect Energy Anomalies</strong>
+                  <span>Flag unusual consumption behavior.</span>
+                </div>
+              </div>
+              <div class="action-card">
+                <div class="action-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>
+                  </svg>
+                </div>
+                <div class="action-text">
+                  <strong>Optimize Energy Usage</strong>
+                  <span>Rebalance equipment efficiently.</span>
+                </div>
+              </div>
+              <div class="action-card">
+                <div class="action-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                  </svg>
+                </div>
+                <div class="action-text">
+                  <strong>Executive Report</strong>
+                  <span>Generate a leadership summary.</span>
+                </div>
+              </div>
+              <div class="action-card">
+                <div class="action-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.58 1 9.8a7 7 0 0 1-9 8.2Z"/><path d="M9 22v-4h4"/>
+                  </svg>
+                </div>
+                <div class="action-text">
+                  <strong>Sustainability Insights</strong>
+                  <span>Review carbon and efficiency metrics.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- CHAT Shell (CENTER) -->
+        <section class="chat-shell">
+          <div class="chat-card">
+            <div class="chat-header">
+              <div>
+                <h3>PowerPilot AI Assistant</h3>
+                <p>Ask about building energy consumption, load balancing, peak demand, or optimization strategies.</p>
+              </div>
+              <div class="typing-indicator">
+                <span class="agent-dot"></span> AI Ready
+                <span class="typing-dots"><span></span><span></span><span></span></span>
+              </div>
+            </div>
+
+            <div class="chat-body">
+              <div class="bubble user">
+                Predict the next peak and tell me what I should optimize first.
+              </div>
+              <div class="bubble assistant">
+                <div class="assistant-header">PowerPilot Response</div>
+                <div class="assistant-summary">
+                  <div class="summary-block">
+                    <div class="summary-title">Summary <span style="color: var(--green); font-size: 11px; font-weight: 700;">Confidence 94%</span></div>
+                    The building is trending toward a peak window in the next 20 minutes. HVAC and EV charging are the most effective optimization targets.
+                  </div>
+                  <div class="summary-block">
+                    <div class="summary-title">Charts <span style="color: var(--text-muted); font-size: 11px; font-weight: 500;">Last 24 Hours</span></div>
+                    <div class="mini-chart"></div>
+                  </div>
+                  <div class="summary-grid">
+                    <div class="summary-metric"><small>Recommendation</small><strong>Shift HVAC 12%</strong></div>
+                    <div class="summary-metric"><small>Storage Action</small><strong>Discharge Battery</strong></div>
+                    <div class="summary-metric"><small>Risk Level</small><strong style="color: var(--orange);">Moderate</strong></div>
+                  </div>
+                  <div class="summary-block">
+                    <div class="summary-title">Recommendations</div>
+                    <div style="display: grid; gap: 8px; color: var(--text); font-size: 12px; font-weight: 500;">
+                      <div>1. Pre-cool the building before 2:45 PM.</div>
+                      <div>2. Delay EV charging to the low-tariff window.</div>
+                      <div>3. Route non-critical loads to battery support.</div>
+                    </div>
+                  </div>
+                  <div class="summary-block">
+                    <div class="summary-title">Table</div>
+                    <div class="summary-table-container">
+                      <table class="summary-table">
+                        <thead>
+                          <tr>
+                            <th>Zone</th>
+                            <th>Load</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr><td>HVAC</td><td>High</td><td>Reduce</td></tr>
+                          <tr><td>Lighting</td><td>Stable</td><td>Maintain</td></tr>
+                          <tr><td>EV Charging</td><td>Flexible</td><td>Delay</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="prompt-rail">
+                  <div class="prompt-chip">Analyze today's building load.</div>
+                  <div class="prompt-chip">Predict next peak demand.</div>
+                  <div class="prompt-chip">Reduce HVAC electricity consumption.</div>
+                  <div class="prompt-chip">Generate today's energy report.</div>
+                  <div class="prompt-chip">Compare this week with last week.</div>
+                  <div class="prompt-chip">Optimize energy costs.</div>
+                </div>
+
+                <div class="chat-mount">
+                  <div id="root"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- STATUS SHELL (RIGHT) -->
+        <aside class="status-shell">
+          <div class="status-card">
+            <h3>Building Status</h3>
+            <div class="status-list">
+              <div class="status-row"><strong>Commercial Office</strong><span class="status-value" style="color: var(--green);">Live</span></div>
+              <div class="status-row"><strong>Current Occupancy</strong><span class="status-value">92%</span></div>
+              <div class="status-row"><strong>Outside Temperature</strong><span class="status-value">39°C</span></div>
+              <div class="status-row"><strong>Solar Generation</strong><span class="status-value">72 kW</span></div>
+              <div class="status-row"><strong>Battery</strong><span class="status-value">84%</span></div>
+              <div class="status-row"><strong>Transformer Capacity</strong><span class="status-value">400 kW</span></div>
+              <div class="status-row"><strong>Current Load</strong><span class="status-value">286 kW</span></div>
+            </div>
+          </div>
+
+          <div class="status-card">
+            <h3>Active AI Agents</h3>
+            <div class="agents">
+              <div class="agent-item">
+                <div class="agent-left">
+                  <span class="agent-dot"></span>
+                  <div class="agent-name">
+                    <strong>Load Monitoring Agent</strong>
+                    <span>Tracking consumption in real time</span>
+                  </div>
+                </div>
+                <span class="agent-status-tag">Active</span>
+              </div>
+              <div class="agent-item">
+                <div class="agent-left">
+                  <span class="agent-dot"></span>
+                  <div class="agent-name">
+                    <strong>Peak Prediction Agent</strong>
+                    <span>Forecasting demand spikes</span>
+                  </div>
+                </div>
+                <span class="agent-status-tag">Active</span>
+              </div>
+              <div class="agent-item">
+                <div class="agent-left">
+                  <span class="agent-dot"></span>
+                  <div class="agent-name">
+                    <strong>Anomaly Detection Agent</strong>
+                    <span>Scanning for irregular load behavior</span>
+                  </div>
+                </div>
+                <span class="agent-status-tag">Active</span>
+              </div>
+              <div class="agent-item">
+                <div class="agent-left">
+                  <span class="agent-dot"></span>
+                  <div class="agent-name">
+                    <strong>Smart Load Balancing Agent</strong>
+                    <span>Optimizing load distribution</span>
+                  </div>
+                </div>
+                <span class="agent-status-tag">Active</span>
+              </div>
+              <div class="agent-item">
+                <div class="agent-left">
+                  <span class="agent-dot"></span>
+                  <div class="agent-name">
+                    <strong>Energy Optimization Agent</strong>
+                    <span>Reducing spend and emissions</span>
+                  </div>
+                </div>
+                <span class="agent-status-tag">Active</span>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <!-- ANALYTICS CHARTS GRID -->
+      <section class="chart-grid">
+        <div class="chart-card">
+          <h3>Energy Consumption Line Chart</h3>
+          <p>Last 24 hours (kW usage)</p>
+          <svg viewBox="0 0 540 200" class="dashboard-chart" aria-hidden="true">
+            <!-- Grid Lines -->
+            <line x1="40" y1="20" x2="520" y2="20" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" />
+            <line x1="40" y1="60" x2="520" y2="60" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" />
+            <line x1="40" y1="100" x2="520" y2="100" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" />
+            <line x1="40" y1="140" x2="520" y2="140" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" />
+            <line x1="40" y1="180" x2="520" y2="180" stroke="var(--border)" stroke-width="1" />
+            <line x1="40" y1="20" x2="40" y2="180" stroke="var(--border)" stroke-width="1" />
+            <!-- Y-Axis Labels -->
+            <text x="10" y="24" font-size="10" font-weight="600">300kW</text>
+            <text x="10" y="64" font-size="10" font-weight="600">200kW</text>
+            <text x="10" y="104" font-size="10" font-weight="600">100kW</text>
+            <text x="15" y="144" font-size="10" font-weight="600">50kW</text>
+            <text x="20" y="184" font-size="10" font-weight="600">0</text>
+            <!-- X-Axis Labels -->
+            <text x="40" y="196" font-size="10" font-weight="600">00:00</text>
+            <text x="150" y="196" font-size="10" font-weight="600">06:00</text>
+            <text x="270" y="196" font-size="10" font-weight="600">12:00</text>
+            <text x="390" y="196" font-size="10" font-weight="600">18:00</text>
+            <text x="490" y="196" font-size="10" font-weight="600">24:00</text>
+            
+            <defs>
+              <linearGradient id="lineFill" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="var(--blue)" stop-opacity="0.25" />
+                <stop offset="100%" stop-color="var(--blue)" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <!-- Path representing load -->
+            <path d="M40,140 C80,135 110,110 140,105 C170,100 200,120 230,125 C260,130 290,110 320,80 C350,50 380,60 410,85 C440,110 470,105 500,95 C510,91 515,88 520,85 L520,180 L40,180 Z" fill="url(#lineFill)" />
+            <path d="M40,140 C80,135 110,110 140,105 C170,100 200,120 230,125 C260,130 290,110 320,80 C350,50 380,60 410,85 C440,110 470,105 500,95 C510,91 515,88 520,85" fill="none" stroke="var(--blue)" stroke-width="3" stroke-linecap="round" />
+            <circle cx="320" cy="80" r="5" fill="var(--blue)" stroke="var(--surface)" stroke-width="2" />
+          </svg>
+        </div>
+
+        <div class="chart-card">
+          <h3>Peak Demand Forecast Chart</h3>
+          <p>Predictive load projection (kW)</p>
+          <svg viewBox="0 0 540 200" class="dashboard-chart" aria-hidden="true">
+            <!-- Grid Lines -->
+            <line x1="40" y1="20" x2="520" y2="20" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" />
+            <line x1="40" y1="60" x2="520" y2="60" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" />
+            <line x1="40" y1="100" x2="520" y2="100" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" />
+            <line x1="40" y1="140" x2="520" y2="140" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" />
+            <line x1="40" y1="180" x2="520" y2="180" stroke="var(--border)" stroke-width="1" />
+            <line x1="40" y1="20" x2="40" y2="180" stroke="var(--border)" stroke-width="1" />
+            <!-- Y-Axis Labels -->
+            <text x="10" y="24" font-size="10" font-weight="600">400kW</text>
+            <text x="10" y="64" font-size="10" font-weight="600">300kW</text>
+            <text x="10" y="104" font-size="10" font-weight="600">200kW</text>
+            <text x="10" y="144" font-size="10" font-weight="600">100kW</text>
+            <text x="20" y="184" font-size="10" font-weight="600">0</text>
+            <!-- X-Axis Labels -->
+            <text x="40" y="196" font-size="10" font-weight="600">12 PM</text>
+            <text x="160" y="196" font-size="10" font-weight="600">1 PM</text>
+            <text x="280" y="196" font-size="10" font-weight="600">2 PM</text>
+            <text x="400" y="196" font-size="10" font-weight="600">3 PM</text>
+            <text x="490" y="196" font-size="10" font-weight="600">4 PM</text>
+            
+            <defs>
+              <linearGradient id="forecastFill" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="var(--orange)" stop-opacity="0.25" />
+                <stop offset="100%" stop-color="var(--orange)" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <path d="M40,150 C100,140 160,110 220,105 C280,100 340,60 400,45 C430,38 460,45 490,65 C505,75 515,85 520,95 L520,180 L40,180 Z" fill="url(#forecastFill)" />
+            <path d="M40,150 C100,140 160,110 220,105 C280,100 340,60 400,45 C430,38 460,45 490,65 C505,75 515,85 520,95" fill="none" stroke="var(--orange)" stroke-width="3" stroke-linecap="round" />
+            <line x1="330" y1="20" x2="330" y2="180" stroke="var(--red)" stroke-width="1.5" stroke-dasharray="4 4" />
+            <text x="335" y="30" fill="var(--red)" font-size="9" font-weight="750">FORECAST SPIKE (2:45 PM)</text>
+          </svg>
+        </div>
+
+        <div class="chart-card">
+          <h3>Equipment Distribution Pie Chart</h3>
+          <p>Active load contribution by subsystem</p>
+          <div style="display: flex; align-items: center; justify-content: center; gap: 32px; flex-wrap: wrap; margin-top: 10px;">
+            <div style="width: 160px; height: 160px; border-radius: 50%; background: conic-gradient(var(--blue) 0 40%, var(--green) 40% 58%, var(--orange) 58% 72%, var(--text-muted) 72% 88%, var(--red) 88% 100%); box-shadow: inset 0 0 0 16px var(--surface), var(--shadow); position: relative;"></div>
+            <div class="chart-legend" style="margin-top: 0; flex-direction: column; align-items: start; gap: 8px;">
+              <div class="legend-item"><span class="legend-dot" style="background: var(--blue)"></span>HVAC (40%)</div>
+              <div class="legend-item"><span class="legend-dot" style="background: var(--green)"></span>Lighting (18%)</div>
+              <div class="legend-item"><span class="legend-dot" style="background: var(--orange)"></span>Elevators (14%)</div>
+              <div class="legend-item"><span class="legend-dot" style="background: var(--text-muted)"></span>EV Charging (16%)</div>
+              <div class="legend-item"><span class="legend-dot" style="background: var(--red)"></span>Others (12%)</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3>Weekly Cost Savings Chart</h3>
+          <p>Accumulated savings trends ($ USD)</p>
+          <svg viewBox="0 0 540 200" class="dashboard-chart" aria-hidden="true">
+            <!-- Grid Lines -->
+            <line x1="40" y1="20" x2="520" y2="20" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" />
+            <line x1="40" y1="60" x2="520" y2="60" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" />
+            <line x1="40" y1="100" x2="520" y2="100" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" />
+            <line x1="40" y1="140" x2="520" y2="140" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" />
+            <line x1="40" y1="180" x2="520" y2="180" stroke="var(--border)" stroke-width="1" />
+            <!-- Y-Axis Labels -->
+            <text x="10" y="24" font-size="10" font-weight="600">$200</text>
+            <text x="10" y="64" font-size="10" font-weight="600">$150</text>
+            <text x="10" y="104" font-size="10" font-weight="600">$100</text>
+            <text x="15" y="144" font-size="10" font-weight="600">$50</text>
+            <text x="20" y="184" font-size="10" font-weight="600">0</text>
+            
+            <!-- Bars -->
+            <g>
+              <!-- Mon -->
+              <rect x="65" y="120" width="28" height="60" rx="4" fill="var(--blue)" opacity="0.85" />
+              <text x="68" y="196" font-size="10" font-weight="600">Mon</text>
+              <!-- Tue -->
+              <rect x="130" y="100" width="28" height="80" rx="4" fill="var(--blue)" opacity="0.85" />
+              <text x="133" y="196" font-size="10" font-weight="600">Tue</text>
+              <!-- Wed -->
+              <rect x="195" y="85" width="28" height="95" rx="4" fill="var(--blue)" opacity="0.85" />
+              <text x="198" y="196" font-size="10" font-weight="600">Wed</text>
+              <!-- Thu -->
+              <rect x="260" y="60" width="28" height="120" rx="4" fill="var(--green)" opacity="0.85" />
+              <text x="263" y="196" font-size="10" font-weight="600">Thu</text>
+              <!-- Fri -->
+              <rect x="325" y="45" width="28" height="135" rx="4" fill="var(--green)" opacity="0.85" />
+              <text x="328" y="196" font-size="10" font-weight="600">Fri</text>
+              <!-- Sat -->
+              <rect x="390" y="30" width="28" height="150" rx="4" fill="var(--green)" opacity="0.85" />
+              <text x="393" y="196" font-size="10" font-weight="600">Sat</text>
+              <!-- Sun -->
+              <rect x="455" y="20" width="28" height="160" rx="4" fill="var(--orange)" opacity="0.85" />
+              <text x="458" y="196" font-size="10" font-weight="600">Sun</text>
+            </g>
+          </svg>
+        </div>
+      </section>
+
+      <!-- FULL WIDTH CARBON TREND -->
+      <section class="chart-grid" style="padding-top: 0;">
+        <div class="alert-card" style="grid-column: 1 / -1;">
+          <h3>Carbon Emission Trend</h3>
+          <p>Relative daily CO₂ equivalent footprint (optimal threshold is lower)</p>
+          <svg viewBox="0 0 1140 200" class="dashboard-chart" aria-hidden="true" style="height: 180px;">
+            <!-- Grid Lines -->
+            <line x1="40" y1="20" x2="1120" y2="20" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" />
+            <line x1="40" y1="60" x2="1120" y2="60" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" />
+            <line x1="40" y1="100" x2="1120" y2="100" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" />
+            <line x1="40" y1="140" x2="1120" y2="140" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" />
+            <line x1="40" y1="180" x2="1120" y2="180" stroke="var(--border)" stroke-width="1" />
+            <!-- Y-Axis Labels -->
+            <text x="10" y="24" font-size="10" font-weight="600">100%</text>
+            <text x="10" y="64" font-size="10" font-weight="600">75%</text>
+            <text x="10" y="104" font-size="10" font-weight="600">50%</text>
+            <text x="10" y="144" font-size="10" font-weight="600">25%</text>
+            <text x="20" y="184" font-size="10" font-weight="600">0</text>
+            <!-- X-Axis Labels -->
+            <text x="40" y="196" font-size="10" font-weight="600">12 AM</text>
+            <text x="220" y="196" font-size="10" font-weight="600">4 AM</text>
+            <text x="400" y="196" font-size="10" font-weight="600">8 AM</text>
+            <text x="580" y="196" font-size="10" font-weight="600">12 PM</text>
+            <text x="760" y="196" font-size="10" font-weight="600">4 PM</text>
+            <text x="940" y="196" font-size="10" font-weight="600">8 PM</text>
+            <text x="1090" y="196" font-size="10" font-weight="600">12 AM</text>
+            
+            <defs>
+              <linearGradient id="carbonFill" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="var(--green)" stop-opacity="0.25" />
+                <stop offset="100%" stop-color="var(--green)" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <path d="M40,40 C140,48 240,62 340,78 C440,98 540,102 640,94 C740,88 840,70 940,72 C1040,74 1090,96 1120,92 L1120,180 L40,180 Z" fill="url(#carbonFill)" />
+            <path d="M40,40 C140,48 240,62 340,78 C440,98 540,102 640,94 C740,88 840,70 940,72 C1040,74 1090,96 1120,92" fill="none" stroke="var(--green)" stroke-width="4" stroke-linecap="round" />
+          </svg>
+        </div>
+      </section>
+
+      <!-- LIVE SYSTEM ALERTS -->
+      <section class="chart-grid" style="padding-top: 0;">
+        <div class="alert-card" style="grid-column: 1 / -1;">
+          <h3>System Event Stream</h3>
+          <p>Real-time anomaly detection and load management activity logs</p>
+          <div class="alert-list" style="margin-top: 14px;">
+            <div class="alert-card-item warning">
+              <div class="alert-card-icon">⚠</div>
+              <div class="alert-card-text">
+                <strong>High HVAC Consumption</strong>
+                <span>Cooling demand increased ahead of the afternoon load peak.</span>
+              </div>
+            </div>
+            <div class="alert-card-item danger">
+              <div class="alert-card-icon">⚡</div>
+              <div class="alert-card-text">
+                <strong>Peak Expected at 2:45 PM</strong>
+                <span>Forecast confidence remains high for the next demand spike.</span>
+              </div>
+            </div>
+            <div class="alert-card-item success">
+              <div class="alert-card-icon">🔋</div>
+              <div class="alert-card-text">
+                <strong>Battery Ready for Peak Shaving</strong>
+                <span>Storage capacity is available to offset demand.</span>
+              </div>
+            </div>
+            <div class="alert-card-item success">
+              <div class="alert-card-icon">🟢</div>
+              <div class="alert-card-text">
+                <strong>Solar Generation Increased</strong>
+                <span>On-site production is improving current efficiency.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FOOTER -->
+      <footer class="footer">
+        Powered by IBM Enterprise AI Technologies
+        <div class="footer-badges">
+          <span class="footer-badge">IBM Granite</span>
+          <span class="footer-badge">IBM watsonx.ai</span>
+          <span class="footer-badge">IBM LangFlow</span>
+          <span class="footer-badge">IBM Orchestrate</span>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    // Watson Orchestrate Core Integration Configuration
+    window.wxOConfiguration = {
+      orchestrationID: "7efeedaad4d14da694c63a3a55467aa1_b0bcd5ea-89bc-496c-9bf8-a87eb9d5ca26",
+      hostURL: "https://au-syd.watson-orchestrate.cloud.ibm.com",
+      rootElementID: "root",
+      deploymentPlatform: "ibmcloud",
+      crn: "crn:v1:bluemix:public:watsonx-orchestrate:au-syd:a/7efeedaad4d14da694c63a3a55467aa1:b0bcd5ea-89bc-496c-9bf8-a87eb9d5ca26::",
+      chatOptions: {
+        agentId: "1311ab9a-2d30-45b1-9788-61e323860f0c"
+      }
+    };
+
+    // UI Helpers: Time Clock
+    function formatTime(date) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function refreshClock() {
+      var clock = document.getElementById('current-time');
+      if (clock) {
+        clock.textContent = formatTime(new Date());
+      }
+    }
+
+    // UI Helpers: Value Counters Animation
+    function animateCounters() {
+      var counters = document.querySelectorAll('[data-counter]');
+      counters.forEach(function (node) {
+        var finalValue = node.getAttribute('data-counter');
+        if (!finalValue) {
+          return;
+        }
+        node.style.transition = 'transform 180ms ease, opacity 180ms ease';
+        node.style.opacity = '0.86';
+        node.style.transform = 'translateY(2px)';
+        window.setTimeout(function () {
+          node.style.opacity = '1';
+          node.style.transform = 'translateY(0)';
+          node.textContent = node.textContent;
+        }, 160);
+      });
+    }
+
+    // Theme Switcher Toggle Logic
+    const toggleBtn = document.getElementById('theme-toggle');
+    
+    // Check initial preference from localStorage or System
+    const savedTheme = localStorage.getItem('theme');
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const initialTheme = savedTheme || 'dark'; // Default to dark theme as requested
+    
+    document.documentElement.setAttribute('data-theme', initialTheme);
+    
+    toggleBtn.addEventListener('click', () => {
+      let theme = document.documentElement.getAttribute('data-theme');
+      let newTheme = theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+    });
+
+    // Watson Orchestrate Async Initialization Loader
+    (function loadWxoChat() {
+      if (!window.__wxoChatLoaded) {
+        window.__wxoChatLoaded = true;
+        var script = document.createElement('script');
+        script.src = window.wxOConfiguration.hostURL + '/wxochat/wxoLoader.js?embed=true';
+        script.async = true;
+        script.addEventListener('load', function () {
+          if (window.wxoLoader && typeof window.wxoLoader.init === 'function') {
+            window.wxoLoader.init();
+          }
+        });
+        document.head.appendChild(script);
+      }
+      refreshClock();
+      animateCounters();
+      window.setInterval(refreshClock, 1000 * 30);
+    })();
+  </script>
+</body>
+</html>
